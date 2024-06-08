@@ -1,6 +1,7 @@
 const express = require("express");
 require("dotenv").config();
 var jwt = require('jsonwebtoken');
+const stripe = require('stripe')('sk_test_51PBVoLRpKZBTemtI25rA4u0oKiW9Uz2kaZWqZGhQCRjP2bqzdZpa7neCPUBKDQxz46zY3LXMy1YDAVTrEx1RsZHc00GMFIQ37w');
 const app = express();
 const cors = require("cors");
 const port = process.env.PORT || 5000;
@@ -50,6 +51,8 @@ async function run() {
     const ProductPurchaseListCollection = dataBase.collection("ProductPurchaseList");
     const ProductAddToCollection = dataBase.collection("ProductAddToCart");
     const categoriesCollection = dataBase.collection("categories");
+    const paymentCollection = dataBase.collection("payment");
+    const activeOrderCollection = dataBase.collection("activeOrder");
 
     // Post User
     app.post('/user', async (req, res) => {
@@ -151,16 +154,16 @@ async function run() {
       const id = newItem._id;
       const find = await ProductAddToCollection.findOne({ _id: id });
       if (find) {
+        const quantity = find.quantity + newItem.quantity
         const options = { upsert: true };
         const updateDoc = {
           $set: {
-            quantity: parseInt(find.quantity) + 1
+            quantity: quantity
           }
         }
         const result = await ProductAddToCollection.updateOne({ _id: id }, updateDoc, options)
         return res.send(result);
       }
-      newItem.quantity = 1;
       const result = await ProductAddToCollection.insertOne(newItem);
       res.send(result);
     });
@@ -225,6 +228,40 @@ async function run() {
       res.send(find);
     });
 
+    app.post("/create-payment-intent", verifyToken, async (req, res) => {
+      const { price } = req.body;
+      console.log(price);
+      // Create a PaymentIntent with the order amount and currency
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: price * 100,
+        currency: "bdt",
+        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+        payment_method_types: [
+          'card',
+        ]
+      });
+
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+
+    app.post('/payments', async (req, res) => {
+      const data = req.body;
+      const ids = data.products?.map(product => product._id);
+      const query = { _id: { $in: ids.map(id => id) } }
+      const deleteCart = await ProductAddToCollection.deleteMany(query);
+      const result = await paymentCollection.insertOne(data);
+      res.send(result);
+    })
+
+    app.get('/payments', verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const query = { email: { $eq: email } };
+      const find = await paymentCollection.find(query).toArray();
+      res.send(find);
+    })
 
     console.log(
       "Pinged your deployment. You successfully connected to MongoDB!"
