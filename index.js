@@ -52,7 +52,8 @@ async function run() {
     const ProductAddToCollection = dataBase.collection("ProductAddToCart");
     const categoriesCollection = dataBase.collection("categories");
     const paymentCollection = dataBase.collection("payment");
-    const activeOrderCollection = dataBase.collection("activeOrder");
+    // const activeOrderCollection = dataBase.collection("activeOrder");
+    const reviewCollection = dataBase.collection("review");
 
     // Post User
     app.post('/user', async (req, res) => {
@@ -261,6 +262,17 @@ async function run() {
       const query = { email: { $eq: email } };
       const find = await paymentCollection.find(query).toArray();
       res.send(find);
+    })
+
+    app.post('/review/:id', async (req, res) => {
+      const data = req.body;
+      const query = { email: { $eq: data.email } }
+      const find = await reviewCollection.findOne(query);
+      if (find) {
+        return
+      }
+      const result = await reviewCollection.insertOne(data);
+      res.send(result);
     })
 
     console.log(
