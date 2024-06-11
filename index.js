@@ -134,6 +134,14 @@ async function run() {
       res.send(result);
     });
 
+    // Delete single Product
+    app.delete('/data/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: id }
+      const result = await productDataCollection.deleteOne(query);
+      res.send(result);
+    })
+
     // Get Single Id
     app.get("/data/:_id", async (req, res) => {
       const id = req.params._id;
@@ -141,6 +149,31 @@ async function run() {
       const findOne = await productDataCollection.findOne(query);
       res.send(findOne)
     });
+
+    app.patch('/data/:id', async (req, res) => {
+      const id = req.params.id;
+      const data = req.body;
+      const query = { _id: id };
+      const updateDoc = {
+        $set: {
+          Product_Name: data.Product_Name,
+          Brand_Name: data.Brand_Name,
+          Product_Code: data.Product_Code,
+          Price: data.Price,
+          Price_Without_Discount: data.Price_Without_Discount,
+          Commission: data.Commission,
+          Product_Description: data.Product_Description,
+          Available_Size: data.Available_Size,
+          Color_Variants: data.Color_Variants,
+          Doc_1_PC: data.Doc_1_PC,
+          Doc_2_PC: data.Doc_2_PC,
+          Doc_3_PC: data.Doc_3_PC
+        }
+      }
+      const result = await productDataCollection.updateOne(query, updateDoc)
+      res.send(result);
+    })
+
 
     // Post Product purchase Data
     app.post("/ProductPurchase", async (req, res) => {
@@ -236,7 +269,6 @@ async function run() {
       const paymentIntent = await stripe.paymentIntents.create({
         amount: price * 100,
         currency: "bdt",
-        // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
         payment_method_types: [
           'card',
         ]
@@ -264,15 +296,44 @@ async function run() {
       res.send(find);
     })
 
+    // TO DO
     app.post('/review/:id', async (req, res) => {
       const data = req.body;
-      const query = { email: { $eq: data.email } }
-      const find = await reviewCollection.findOne(query);
-      if (find) {
-        return
-      }
       const result = await reviewCollection.insertOne(data);
       res.send(result);
+    })
+
+    app.get('/productRating/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { id: id }
+      const find = await reviewCollection.find(query).toArray();
+      const ratings = find.reduce((sum, rating) => sum + rating.value, 0) / find.length;
+      res.send({ ratings });
+    })
+
+    app.get('/review/:id', async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const filter = { id: id };
+      const find = await reviewCollection.find(filter).toArray();
+      res.send(find);
+    })
+
+    app.get('/allOrders', async (req, res) => {
+      const options = {
+        projection: { products: 1, _id: 1, transactionId: 1 }
+      }
+      const find = await paymentCollection.find({}, options).toArray();
+      res.send(find);
+    })
+
+    app.patch('/allOrders/:id', async (req, res) => {
+      const productId = req.query.productId;
+      const paymentId = req.params.id;
+      const query = { $and: [{ _id: new ObjectId(paymentId) }, { "products._id": productId }] }
+      const updateDoc = { $set: { "products.$.deliveryStatus": true } }
+      const find = await paymentCollection.updateOne(query, updateDoc);
+      res.send(find);
     })
 
     console.log(
