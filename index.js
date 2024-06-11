@@ -329,11 +329,6 @@ async function run() {
       res.send(find);
     })
 
-    app.get('/review/:email', async (req, res) => {
-      const email = req.params.email;
-      console.log(email);
-    })
-
     app.get('/allOrders', async (req, res) => {
       const options = {
         projection: { products: 1, _id: 1, transactionId: 1 }
