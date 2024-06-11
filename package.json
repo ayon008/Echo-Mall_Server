@@ -17,6 +17,7 @@
     "express": "^4.19.2",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^5.7.0",
+    "nanoid": "^5.0.7",
     "stripe": "^15.9.0"
   }
 }

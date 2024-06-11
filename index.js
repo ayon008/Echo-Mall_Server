@@ -42,6 +42,12 @@ const verifyToken = (req, res, next) => {
   });
 };
 
+function generateCustomId() {
+  const timestamp = Date.now().toString(16); // Convert current timestamp to hexadecimal
+  const randomPart = Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join(''); // Generate 12 random hex characters
+  return timestamp + randomPart;
+}
+
 
 async function run() {
   try {
@@ -124,6 +130,8 @@ async function run() {
     // Post Product Data
     app.post("/data", async (req, res) => {
       const newItem = req.body;
+      const newId = generateCustomId();
+      newItem._id = newId;
       const result = await productDataCollection.insertOne(newItem);
       res.send(result);
     });
@@ -154,6 +162,7 @@ async function run() {
       const id = req.params.id;
       const data = req.body;
       const query = { _id: id };
+      const options = { upsert: true };
       const updateDoc = {
         $set: {
           Product_Name: data.Product_Name,
@@ -170,7 +179,8 @@ async function run() {
           Doc_3_PC: data.Doc_3_PC
         }
       }
-      const result = await productDataCollection.updateOne(query, updateDoc)
+      const result = await productDataCollection.updateOne(query, updateDoc, options);
+      console.log(result);
       res.send(result);
     })
 
@@ -317,6 +327,11 @@ async function run() {
       const filter = { id: id };
       const find = await reviewCollection.find(filter).toArray();
       res.send(find);
+    })
+
+    app.get('/review/:email', async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
     })
 
     app.get('/allOrders', async (req, res) => {
